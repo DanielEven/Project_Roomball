@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from pymycobot.mycobot import MyCobot
 import inspect
 import re
+import argparse
 
 app = Flask(__name__)
 
@@ -40,5 +41,11 @@ def call_function(function_name):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='mycobot server')
+    parser.add_argument('host', type=str, help='host ip', default='192.168.0.134')
+    parser.add_argument('port', type=int, help='port number', default=12355)
+    args = parser.parse_args()
+
     mc = MyCobot("/dev/ttyAMAO", 1000000)
-    app.run(host="127.0.0.1", port=12355)
+
+    app.run(host=args.host, port=args.port)
