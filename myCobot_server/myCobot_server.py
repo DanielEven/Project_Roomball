@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import math
+from pymycobot.mycobot import MyCobot
 import inspect
 import re
 
@@ -27,7 +27,7 @@ def parse_args(args):
 
 @app.route('/call/<function_name>')
 def call_function(function_name):
-    func = getattr(math, function_name, None)
+    func = getattr(MyCobot, function_name, None)
     if func is None or not inspect.isroutine(func):
         return jsonify({'error': f'No such function: {function_name}'}), 404
 
@@ -40,4 +40,5 @@ def call_function(function_name):
 
 
 if __name__ == "__main__":
+    mc = MyCobot("/dev/ttyAMAO", 1000000)
     app.run(host="127.0.0.1", port=12355)
