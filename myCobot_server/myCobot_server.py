@@ -10,9 +10,9 @@ app = Flask(__name__)
 def parse_arg(arg: str):
     if arg.startswith('(') and arg.endswith(')'):
         if '.' in arg:
-            return tuple(float(x.split()) for x in arg[1:-1].split(","))
+            return tuple(float(x) for x in arg[1:-1].split(","))
         else:
-            return tuple(int(x.split()) for x in arg[1:-1].split(","))
+            return tuple(int(x) for x in arg[1:-1].split(","))
     elif arg.isdigit():
         return int(arg)
     elif arg.replace('.', '', 1).isdigit():
@@ -34,7 +34,7 @@ def call_function(function_name):
 
     args = request.args.get('args', '')
     try:
-        result = func(*parse_args(args))
+        result = func(mc, *parse_args(args))
         return jsonify({'result': result})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -42,10 +42,10 @@ def call_function(function_name):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='mycobot server')
-    parser.add_argument('host', type=str, help='host ip', default='192.168.0.134')
-    parser.add_argument('port', type=int, help='port number', default=12355)
+    parser.add_argument('--host', type=str, help='host ip', default='192.168.0.134')
+    parser.add_argument('--port', type=int, help='port number', default=12355)
     args = parser.parse_args()
 
-    mc = MyCobot("/dev/ttyAMAO", 1000000)
+    mc = MyCobot("/dev/ttyAMA0", 1000000)
 
     app.run(host=args.host, port=args.port)
