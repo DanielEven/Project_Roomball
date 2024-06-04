@@ -4,6 +4,8 @@ import inspect
 import re
 import argparse
 
+DEFAULT_IP = '192.168.0.134'
+
 app = Flask(__name__)
 
 
@@ -40,11 +42,16 @@ def call_function(function_name):
         return jsonify({'error': str(e)}), 400
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='mycobot server')
-    parser.add_argument('--host', type=str, help='host ip', default='192.168.0.134')
+def get_arguments():
+    parser = argparse.ArgumentParser(description='myCobot 3 Command Server.🚀🔥')
+    parser.add_argument('--host', type=str, help='host ip',
+                        default=DEFAULT_IP)
     parser.add_argument('--port', type=int, help='port number', default=12355)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = get_arguments()
 
     mc = MyCobot("/dev/ttyAMA0", 1000000)
 
