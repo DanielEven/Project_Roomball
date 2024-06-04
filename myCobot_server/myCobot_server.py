@@ -3,11 +3,16 @@ from pymycobot.mycobot import MyCobot
 import inspect
 import re
 import argparse
+import logging
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def parse_arg(arg: str):
@@ -49,9 +54,11 @@ def call_function(function_name):
     args = request.args.get('args', '')
     try:
         parsed_args = parse_args(args)
+        logger.info(f"Calling function {function_name} with arguments {parsed_args}")
         result = func(mc, *parsed_args)
         return jsonify({'result': result})
     except Exception as e:
+        logger.error(f"Error calling function {function_name}: {e}")
         return jsonify({'error': str(e)}), 400
 
 
@@ -60,7 +67,12 @@ def close_server():
     """
     Close the flask server and disconnect the myCobot instance.
     """
-    mc.close()
+    try:
+        mc.close()
+    except Exception as e:
+        logger.error(f"Error closing myCobot: {e}")
+        return jsonify({'error': str(e)}), 500
+
     exit(0)
 
 def get_arguments():
@@ -76,6 +88,11 @@ def get_arguments():
 if __name__ == "__main__":
     args = get_arguments()
 
-    mc = MyCobot("/dev/ttyAMA0", 1000000)
+    try:
+        mc = MyCobot("/dev/ttyAMA0", 1000000)
+        logger.info("myCobot initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize myCobot: {e}")
+        exit(1)
 
     app.run(host=args.host, port=args.port)
