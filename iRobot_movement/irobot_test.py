@@ -3,6 +3,18 @@ from irobot_edu_sdk.robots import event, Create3
 
 robot = Create3(Bluetooth())
 
+@event(robot.when_play)
+async def move_until_close(robot, speed=100, distance=80):
+    '''
+    Move the robot until it is close to an object.
+    Return the the sensor values.
+    '''
+    await robot.set_wheel_speeds(speed, speed)
+    while max((await robot.get_ir_proximity()).sensors) < distance:
+        pass
+    await robot.set_wheel_speeds(0, 0)
+
+    return (await robot.get_ir_proximity()).sensors
 
 @event(robot.when_play)
 async def draw_square(robot):

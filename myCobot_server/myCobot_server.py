@@ -22,10 +22,7 @@ def parse_arg(arg: str):
     """
     if arg.startswith('(') and arg.endswith(')'):
         elements = arg[1:-1].split(",")
-        if all(element.replace('.', '', 1).isdigit() for element in elements):
-            return tuple(float(x) if '.' in x else int(x) for x in elements)
-        else:
-            return tuple(elements)
+        return tuple(float(x) if '.' in x else int(x) for x in elements)
     elif arg.isdigit():
         return int(arg)
     elif arg.replace('.', '', 1).isdigit():
