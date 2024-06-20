@@ -1,9 +1,11 @@
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, Create3
 import argparse
-import requests
 import time
 
+from os import sys, path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+from myCobot_client.myCobot_client import call_cobot_function
 
 DRIVING_SPEED = 10
 DETECTION_THRESHOLD = 80
@@ -32,17 +34,6 @@ async def move_until_close(robot, speed=100, distance=80):
     await robot.set_wheel_speeds(0, 0)
 
     return (await robot.get_ir_proximity()).sensors
-
-def call_cobot_function(ip_addr, port, func_name, *params):
-    url = f"http://{ip_addr}:{port}/call/{func_name}?args="
-    for i, param in enumerate(params):
-        if type(param) == tuple:
-            url += f"({','.join(str(x) for x in param)})"
-        else:
-            url += f"{param}"
-        if i != len(params) - 1:
-            url += ","
-    return requests.get(url)
 
 
 def grab_object():
