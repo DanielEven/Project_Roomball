@@ -4,6 +4,8 @@ import inspect
 import re
 import argparse
 import logging
+import serial
+import termios
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
@@ -14,6 +16,12 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Start Serial communication
+try:
+    ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+except serial.SerialException:
+    logger.error("Failed to open serial port")
+    ser = None
 
 def parse_arg(arg: str):
     """
@@ -59,7 +67,29 @@ def call_function(function_name):
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/close_server', methods=['GET'])
+@app.route('/call_custom/get_ultrasonic_sensors', methods=['GET'])
+def get_ultrasonic_sensors():
+    logger.info(f"Calling custom function get_ultrasonic_sensors with arguments []")
+    global ser
+    if ser is None:
+        try:
+            ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+        except serial.SerialException:
+            logger.error("Failed to open serial port")
+            return jsonify({'error': 'Failed to open serial port'}), 400
+    try:
+        ser.reset_input_buffer()
+        line = ser.readline().decode()
+        while not line.startswith("Distances:"):
+            line = ser.readline().decode()
+        return jsonify({'values': [float(x) for x in line.split()[1:]]})
+    except termios.error:
+        ser = None
+        logger.error("Failed to open serial port")
+        return jsonify({'error': 'Failed to open serial port'}), 400
+
+
+@app.route('/call_custom/close_server', methods=['GET'])
 def close_server():
     """
     Close the flask server and disconnect the myCobot instance.
