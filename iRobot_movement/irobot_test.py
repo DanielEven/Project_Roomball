@@ -7,8 +7,12 @@ from os import sys, path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from myCobot_client.myCobot_client import call_cobot_function
 
+COBOT_IP = "192.168.0.134"
+COBOT_PORT = 12335 
+
 DRIVING_SPEED = 10
 DETECTION_THRESHOLD = 80
+DETECTION_DISTANCE_THRESHOLD = 10
 TARGET_DISTANCE = 1000
 ROTATION_SPEED = 1
 REPOSITION_SPEED = 1
@@ -22,56 +26,49 @@ DEFAULT_ANGLES = [15, 10, -100, 3, 0, -30]
 
 robot = Create3(Bluetooth())
 
-@event(robot.when_play)
-async def move_until_close(robot, speed=100, distance=80):
-    '''
-    Move the robot until it is close to an object.
-    Return the the sensor values.
-    '''
-    await robot.set_wheel_speeds(speed, speed)
-    while max((await robot.get_ir_proximity()).sensors) < distance:
-        pass
-    await robot.set_wheel_speeds(0, 0)
-
-    return (await robot.get_ir_proximity()).sensors
-
 
 def grab_object():
-    call_cobot_function("192.168.0.134", 12355, "set_gripper_value", 100, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
     time.sleep(1)
-    call_cobot_function("192.168.0.134", 12355, "send_angles", GRAB_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", GRAB_ANGLES, 50)
     time.sleep(1.5)
-    call_cobot_function("192.168.0.134", 12355, "set_gripper_value", 100, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
     time.sleep(0.5)
-    call_cobot_function("192.168.0.134", 12355, "send_angles", MIDDLE_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", MIDDLE_ANGLES, 50)
     time.sleep(1)
-    call_cobot_function("192.168.0.134", 12355, "send_angles", DEFAULT_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", DEFAULT_ANGLES, 50)
     time.sleep(1)
 
 
 @event(robot.when_play)
 async def find_objects(robot):
     # set rgb based on sensor closest to object
-    while True:
-        ir_sensors = (await robot.get_ir_proximity()).sensors
-        sense = max(ir_sensors)
-        if sense > DETECTION_THRESHOLD:
-            await robot.set_lights_on_rgb(*COLORS[ir_sensors.index(sense)])
-        else:
-            await robot.set_lights_off()
+    # while True:
+    #     ir_sensors = (await robot.get_ir_proximity()).sensors
+    #     print(ir_sensors[3])
+    #     sense = max(ir_sensors)
+    #     if sense > DETECTION_THRESHOLD:
+    #         await robot.set_lights_on_rgb(*COLORS[ir_sensors.index(sense)])
+    #     else:
+    #         await robot.set_lights_off()
+    await robot.set_wheel_speeds(DRIVING_SPEED, DRIVING_SPEED)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD)
+    await robot.set_wheel_speeds(0, 0)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "get_ultrasonic_sensors")
 
 
 @event(robot.when_touched, [True, False])
 async def find_objects_once(robot):
     # time.sleep(2)
-    # call_cobot_function("192.168.0.134", 12355, "send_angles", MIDDLE_ANGLES, 50)
-    # call_cobot_function("192.168.0.134", 12355, "send_angles", DEFAULT_ANGLES, 50)
+    # call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", MIDDLE_ANGLES, 50)
+    # call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", DEFAULT_ANGLES, 50)
     # move robot until it is close to an object
     # drive forward until object is detected
     await robot.set_wheel_speeds(DRIVING_SPEED, DRIVING_SPEED)
-    while max((await robot.get_ir_proximity()).sensors) < DETECTION_THRESHOLD:
-        pass
+    call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD)
     await robot.set_wheel_speeds(0, 0)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "get_ultrasonic_sensors")
+
 
     time.sleep(1)
 
@@ -118,8 +115,8 @@ async def drive(robot):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='mycobot server')
-    parser.add_argument('--host', type=str, help='host ip', default='192.168.0.134')
-    parser.add_argument('--port', type=int, help='port number', default=12355)
+    parser.add_argument('--host', type=str, help='host ip', default=COBOT_IP)
+    parser.add_argument('--port', type=int, help='port number', default=COBOT_PORT)
     args = parser.parse_args()
 
     robot.play()
