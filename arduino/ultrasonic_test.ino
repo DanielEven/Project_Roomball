@@ -1,7 +1,7 @@
-#define SENSOR_CNT 2
+#define SENSOR_CNT 3
 
-const int trigPins[SENSOR_CNT] = {9, 2};
-const int echoPins[SENSOR_CNT] = {10, 3};
+const int trigPins[SENSOR_CNT] = {2, 4, 6};
+const int echoPins[SENSOR_CNT] = {3, 5, 7};
 
 float duration, distance;
 

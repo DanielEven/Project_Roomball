@@ -6,6 +6,7 @@ import argparse
 import logging
 import serial
 import termios
+import json
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
@@ -82,7 +83,39 @@ def get_ultrasonic_sensors():
         line = ser.readline().decode()
         while not line.startswith("Distances:"):
             line = ser.readline().decode()
-        return jsonify({'values': [float(x) for x in line.split()[1:]]})
+        return jsonify({'result': [float(x) for x in line.split()[1:]]})
+    except termios.error:
+        ser = None
+        logger.error("Failed to open serial port")
+        return jsonify({'error': 'Failed to open serial port'}), 400
+
+
+@app.route('/call_custom/wait_for_obstacle', methods=['GET'])
+def wait_for_obstacle():
+    global ser
+    args = request.args.get('args', '')
+    parsed_args = parse_args(args)
+    distance = parsed_args[0]
+    logger.info(f"Calling custom function wait_for_obstacle with arguments {parsed_args}")
+
+    if ser is None:
+        try:
+            ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+        except serial.SerialException:
+            logger.error("Failed to open serial port")
+            return jsonify({'error': 'Failed to open serial port'}), 400
+    try:
+        ser.reset_input_buffer()
+        line = ser.readline().decode()
+        while not line.startswith("Distances:"):
+            line = ser.readline().decode()
+        sensor_values =  [float(x) for x in line.split()[1:]]
+        while min(sensor_values) > distance:
+            line = ser.readline().decode()
+            while not line.startswith("Distances:"):
+                line = ser.readline().decode()
+            sensor_values =  [float(x) for x in line.split()[1:]]
+        return jsonify({'result': [float(x) for x in line.split()[1:]]})
     except termios.error:
         ser = None
         logger.error("Failed to open serial port")
