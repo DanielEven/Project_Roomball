@@ -11,7 +11,7 @@ from myCobot_client.myCobot_client import call_cobot_function
 COBOT_IP = "192.168.0.134"
 COBOT_PORT = 12355
 
-DETECTION_DISTANCE_THRESHOLD = 60
+DETECTION_DISTANCE_THRESHOLD = 40
 ROTATION_SPEED = 1
 DETECTION_DISTANCE_SPINNING = 10
 FINAL_DISTANCE = 5
@@ -19,8 +19,10 @@ FINAL_DISTANCE = 5
 FOLDED_POSITION = [5, -90, 100, -90, 0, -45]
 MIDDLE_POSITION = [5, -70, -10, 0, 0, -45]
 LIFT_POSITION = [5, -90, 0, 7, 0, -45]
+INSERT_POSITION = [5, -90, 60, -45, 0, -45]
+INSERT_MIDDLE_POSITION = [5, -60, 30, -45, 0, -45]
 
-#Initalize irobot, needs to be before all functions inlucding robot
+#Initalize irobot, needs to be before all functions including robot
 robot = Create3(Bluetooth())
 
 def lift_cup():
@@ -44,9 +46,18 @@ def drop_cup():
     time.sleep(2)
 
 
-async def locate_item(robot):
-    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", FOLDED_POSITION, 50)
+def insert_cup():
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", INSERT_MIDDLE_POSITION, 50)
+    time.sleep(2)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", INSERT_POSITION, 50)
+    time.sleep(1)
     call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
+    time.sleep(1)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", FOLDED_POSITION, 50)
+    time.sleep(2)
+
+
+async def locate_item(robot):
     await robot.wait(1)
 
     # Spinning until the robot detects an obstacle
@@ -77,19 +88,31 @@ async def locate_item(robot):
     await robot.move(distance - FINAL_DISTANCE)
     time.sleep(1)
 
-async def get_object(robot):
+async def get_object(robot, insert=True):
+    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", FOLDED_POSITION, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
     await robot.wait(1)
     await locate_item(robot)
     lift_cup()
-    await robot.navigate_to(0, 0, 270)
-    drop_cup()
+    if insert:
+        # calibrate with respect to the cup
+        await robot.navigate_to(10, 10, 300)
+        await locate_item(robot)
+        insert_cup()
+    else:
+        await robot.navigate_to(0, 0, 270)
+        drop_cup()
     await robot.turn_right(180)
 
+
+@event(robot.when_touched, [True, False])
+async def test(robot):
+    await locate_item(robot)
 
 @event(robot.when_touched, [False, True])
 async def get_items(robot):
     await robot.reset_navigation()
-    await get_object(robot)
+    await get_object(robot, insert=False)
     await robot.wait(1)
     await get_object(robot)
 
