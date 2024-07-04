@@ -6,6 +6,7 @@ import argparse
 import logging
 import serial
 import termios
+import time
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
@@ -112,11 +113,14 @@ def wait_for_obstacle():
         while not line.startswith("Distances:"):
             line = ser.readline().decode()
         sensor_values =  [float(x) for x in line.split()[1:]]
+        start_time = time.time()
         while (min(sensor_values) if sensor is None else sensor_values[sensor]) > distance:
             line = ser.readline().decode()
             while not line.startswith("Distances:"):
                 line = ser.readline().decode()
             sensor_values =  [float(x) for x in line.split()[1:]]
+            if time.time() - start_time > 3:
+                return jsonify({'result': 'Timeout'}), 400
         return jsonify({'result': [float(x) for x in line.split()[1:]]})
     except termios.error:
         ser = None
