@@ -6,7 +6,6 @@ import argparse
 import logging
 import serial
 import termios
-import json
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
@@ -96,6 +95,9 @@ def wait_for_obstacle():
     args = request.args.get('args', '')
     parsed_args = parse_args(args)
     distance = parsed_args[0]
+    sensor = None
+    if len(parsed_args) == 2:
+        sensor = parsed_args[1]
     logger.info(f"Calling custom function wait_for_obstacle with arguments {parsed_args}")
 
     if ser is None:
@@ -110,7 +112,7 @@ def wait_for_obstacle():
         while not line.startswith("Distances:"):
             line = ser.readline().decode()
         sensor_values =  [float(x) for x in line.split()[1:]]
-        while min(sensor_values) > distance:
+        while (min(sensor_values) if sensor is None else sensor_values[sensor]) > distance:
             line = ser.readline().decode()
             while not line.startswith("Distances:"):
                 line = ser.readline().decode()

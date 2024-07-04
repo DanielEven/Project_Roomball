@@ -32,6 +32,7 @@ async def locate_item(robot):
     # Spinning until the robot detects an obstacle
     await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
     call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD, 1, custom=True) # 1 = the sensor to wait for
+    print("got response")
     await robot.set_wheel_speeds(0, 0)
 
     # Read the obstacle distance and move towards it + fixing distance
@@ -55,4 +56,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     robot.play()
-
