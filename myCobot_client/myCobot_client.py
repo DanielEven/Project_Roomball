@@ -2,7 +2,7 @@ import requests
 import json
 
 def call_cobot_function(ip_addr, port, func_name, *params, custom=False):
-    url = f"http://{ip_addr}:{port}/call{"custom" if custom else ""}/{func_name}?args="
+    url = f"http://{ip_addr}:{port}/call{'_custom' if custom else ''}/{func_name}?args="
     for i, param in enumerate(params):
         if type(param) == tuple:
             url += f"({','.join(str(x) for x in param)})"
@@ -11,7 +11,6 @@ def call_cobot_function(ip_addr, port, func_name, *params, custom=False):
         if i != len(params) - 1:
             url += ","
     response = requests.get(url)
-    response_json = json.loads(response.get_data().decode())
+    response_json = response.json()
     return_val = response_json["result"]
-    print(return_val)
-    return requests.get(url)
+    return return_val
