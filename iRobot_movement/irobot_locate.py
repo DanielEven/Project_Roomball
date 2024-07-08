@@ -19,7 +19,7 @@ FINAL_DISTANCE = 5
 FOLDED_POSITION = [5, -90, 100, -90, 0, -45]
 MIDDLE_POSITION = [5, -70, -10, 0, 0, -45]
 LIFT_POSITION = [5, -90, 0, 7, 0, -45]
-INSERT_POSITION = [5, -90, 60, -45, 0, -45]
+INSERT_POSITION = [5, -90, 50, -35, 0, -45]
 INSERT_MIDDLE_POSITION = [5, -60, 30, -45, 0, -45]
 
 #Initalize irobot, needs to be before all functions including robot
@@ -64,10 +64,8 @@ async def locate_item(robot):
     for i in range(2):
         await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
         # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
-        if call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD, 1, custom=True) == "timeout":
-            print("No object was founded, stopping search")
-            return
-
+        while "Timeout" == call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD, 1, custom=True):
+            pass
         await robot.set_wheel_speeds(0, 0)
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, "get_ultrasonic_sensors", custom=True)
         await robot.move(distances[1] / 2)
