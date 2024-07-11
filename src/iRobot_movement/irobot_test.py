@@ -4,6 +4,8 @@ import argparse
 import time
 
 from os import sys, path
+
+from sever_commands import ServerCommands
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from myCobot_client.myCobot_client import call_cobot_function
 
@@ -28,15 +30,15 @@ robot = Create3(Bluetooth())
 
 
 def grab_object():
-    call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
     time.sleep(1)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", GRAB_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, GRAB_ANGLES, 50)
     time.sleep(1.5)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "set_gripper_value", 100, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
     time.sleep(0.5)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", MIDDLE_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, MIDDLE_ANGLES, 50)
     time.sleep(1)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", DEFAULT_ANGLES, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, DEFAULT_ANGLES, 50)
     time.sleep(1)
 
 
@@ -52,22 +54,22 @@ async def find_objects(robot):
     #     else:
     #         await robot.set_lights_off()
     await robot.set_wheel_speeds(DRIVING_SPEED, DRIVING_SPEED)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_THRESHOLD)
     await robot.set_wheel_speeds(0, 0)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "get_ultrasonic_sensors")
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
 
 
 @event(robot.when_touched, [True, False])
 async def find_objects_once(robot):
     # time.sleep(2)
-    # call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", MIDDLE_ANGLES, 50)
-    # call_cobot_function(COBOT_IP, COBOT_PORT, "send_angles", DEFAULT_ANGLES, 50)
+    # call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, MIDDLE_ANGLES, 50)
+    # call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, DEFAULT_ANGLES, 50)
     # move robot until it is close to an object
     # drive forward until object is detected
     await robot.set_wheel_speeds(DRIVING_SPEED, DRIVING_SPEED)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "wait_for_obstacle", DETECTION_DISTANCE_THRESHOLD)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_THRESHOLD)
     await robot.set_wheel_speeds(0, 0)
-    call_cobot_function(COBOT_IP, COBOT_PORT, "get_ultrasonic_sensors")
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
 
 
     time.sleep(1)
