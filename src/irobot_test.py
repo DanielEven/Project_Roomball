@@ -6,8 +6,7 @@ import time
 from os import sys, path
 
 from sever_commands import ServerCommands
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from myCobot_client.myCobot_client import call_cobot_function
+from myCobot_client import call_cobot_function
 
 COBOT_IP = "192.168.0.134"
 COBOT_PORT = 12355
