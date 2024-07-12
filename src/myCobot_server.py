@@ -8,10 +8,12 @@ import serial
 import termios
 import time
 
-from sever_commands import ServerCommands
+from server_commands import ServerCommands
 
 DEFAULT_IP = '192.168.0.134'
 DEFAULT_PORT = 12355
+
+TIMEOUT = 3
 
 app = Flask(__name__)
 
@@ -121,9 +123,9 @@ def wait_for_obstacle():
             while not line.startswith("Distances:"):
                 line = ser.readline().decode()
             sensor_values =  [float(x) for x in line.split()[1:]]
-            if time.time() - start_time > 3:
+            if time.time() - start_time > TIMEOUT:
                 return jsonify({'result': 'Timeout'}), 400
-        return jsonify({'result': [float(x) for x in line.split()[1:]]})
+        return jsonify({'result': ([float(x) for x in line.split()[1:]], time.time() - start_time)})
     except termios.error:
         ser = None
         logger.error("Failed to open serial port")

@@ -3,9 +3,7 @@ from irobot_edu_sdk.robots import event, Create3
 import argparse
 import time
 
-from os import sys, path
-
-from sever_commands import ServerCommands
+from server_commands import ServerCommands
 from myCobot_client import call_cobot_function
 
 COBOT_IP = "192.168.0.134"

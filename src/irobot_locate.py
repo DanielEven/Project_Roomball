@@ -4,10 +4,9 @@ import time
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, Create3
 
-from os import sys, path
 
-from sever_commands import ServerCommands
 from myCobot_client import call_cobot_function
+from server_commands import ServerCommands
 
 COBOT_IP = "192.168.0.134"
 COBOT_PORT = 12355
@@ -15,6 +14,7 @@ COBOT_PORT = 12355
 DETECTION_DISTANCE_THRESHOLD = 60
 HOME_DISTANCE_THRESHOLD = 20
 ROTATION_SPEED = 1
+SCAN_ROTATION_SPEED = 5
 DETECTION_DISTANCE_SPINNING = 10
 FINAL_DISTANCE = 5
 
@@ -23,6 +23,9 @@ MIDDLE_POSITION = [5, -70, -10, 0, 0, -45]
 LIFT_POSITION = [5, -90, 0, 7, 0, -45]
 INSERT_POSITION = [5, -90, 50, -35, 0, -45]
 INSERT_MIDDLE_POSITION = [5, -60, 30, -45, 0, -45]
+SIDE_MIDDLE_POSITION_1 = [-50, -80, 20, -5, 90, -90]
+SIDE_MIDDLE_POSITION_2 = [-50, -130, 20, 0, 90, -110]
+SIDE_GRAB_POSITION = [-35, -130, 20, 0, 90, -110]
 
 #Initalize irobot, needs to be before all functions including robot
 robot = Create3(Bluetooth())
@@ -59,6 +62,23 @@ def insert_cup():
     time.sleep(1.5)
 
 
+def lift_side_cup():
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_1, 50)
+    time.sleep(1.7)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_2, 50)
+    time.sleep(0.7)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_GRAB_POSITION, 50)
+    time.sleep(0.6)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 0, 50)
+    time.sleep(1)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_2, 50)
+    time.sleep(0.6)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_1, 50)
+    time.sleep(0.7)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
+    time.sleep(1.7)
+
+
 async def locate_home(robot):
     await robot.wait(1)
 
@@ -74,7 +94,7 @@ async def locate_home(robot):
             distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
         await robot.move(distances[1] / 2)
     
-    # Spin to the left until middle sensor detects the object.
+    # Spin to the right until middle sensor detects the object.
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
     if distances[1] > DETECTION_DISTANCE_SPINNING:
         await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
@@ -82,7 +102,7 @@ async def locate_home(robot):
             print("No object was found, continuing search")
         await robot.set_wheel_speeds(0, 0)
 
-    # Spin to the right until left sensor can see the item, then stops
+    # Spin to the left until right sensor can see the item, then stops
     await robot.set_wheel_speeds(-ROTATION_SPEED, ROTATION_SPEED)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0, custom=True) # 0 = the sensor to wait for
     await robot.set_wheel_speeds(0, 0)
@@ -97,35 +117,32 @@ async def locate_closest_item(robot):
     start_angle = angle
     min_angle = angle
 
-    await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
+    await robot.set_wheel_speeds(SCAN_ROTATION_SPEED, -SCAN_ROTATION_SPEED)
     while (start_angle - angle) % 360 < 90:
-        distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, min_distance - 0.5, 1, custom=True)
+        distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, max(min_distance - 0.5, 0), 1, custom=True)
         if distance == "Timeout":
             angle = (await robot.get_position()).heading
             continue
+        distance = distance[0]
         angle = (await robot.get_position()).heading
         if (start_angle - angle) % 360 < 90:
             min_distance = distance[1]
             min_angle = angle
-            print(f"updated to distance {distance} and angle {angle}")
     
     await robot.set_wheel_speeds(0, 0)
-    print(min_angle, min_distance)
-    print(await robot.get_position())
     current_angle = (await robot.get_position()).heading
-    print(current_angle, min_angle)
     if start_angle == min_angle:
         return False
 
     await robot.turn_left((min_angle - current_angle) % 360)
 
-    #  Driving to obeject
+    #  Driving to object
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
     await robot.move(distances[1] / 2)
     loops = 1
     while distances[1] > DETECTION_DISTANCE_SPINNING * 2:
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
-        detection_distance = (DETECTION_DISTANCE_THRESHOLD / (2 ** loops)) + 10
+        detection_distance = (DETECTION_DISTANCE_THRESHOLD / (2 ** loops)) + 5
         if distances[1] > detection_distance:
             await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
             # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
@@ -134,8 +151,9 @@ async def locate_closest_item(robot):
             await robot.set_wheel_speeds(0, 0)
             distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
         await robot.move(distances[1] / 2)
+        loops += 1
     
-    # Spin to the left until middle sensor detects the object.
+    # Spin to the right until middle sensor detects the object.
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
     if distances[1] > DETECTION_DISTANCE_SPINNING:
         await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
@@ -144,24 +162,37 @@ async def locate_closest_item(robot):
         await robot.set_wheel_speeds(0, 0)
 
     # Spin to the right until left sensor can see the item, then stops
-    await robot.set_wheel_speeds(-ROTATION_SPEED, ROTATION_SPEED)
-    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0, custom=True) # 0 = the sensor to wait for
+    await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 2, custom=True) # 2 = the sensor to wait for
     await robot.set_wheel_speeds(0, 0)
-
+    # Spin to the left until right sensor can see the item, then stops
+    await robot.set_wheel_speeds(-ROTATION_SPEED, ROTATION_SPEED)
+    t = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0, custom=True)[1] # 0 = the sensor to wait for
+    print(t)
+    await robot.set_wheel_speeds(0, 0)
     distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)[0]
-    await robot.move(distance - FINAL_DISTANCE)
-    return True
+    if t < 1.4:
+        await robot.move(distance - FINAL_DISTANCE + 4)
+        return "side"
+    else:
+        await robot.move(distance - FINAL_DISTANCE)
+        return "lift"
+
 
 async def retrieve_object(robot, insert=True):
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
     await robot.wait(1)
-    if not await locate_closest_item(robot):
+    closest_item = await locate_closest_item(robot)
+    if not closest_item:
         return False
-    lift_cup()
+    if closest_item == "lift":
+        lift_cup()
+    else:
+        lift_side_cup()
     if insert:
         # calibrate with respect to the cup
-        await robot.navigate_to(10, 10, 285)
+        await robot.navigate_to(5, 5, 285)
         await locate_home(robot)
         insert_cup()
     else:
@@ -181,11 +212,8 @@ async def get_items(robot):
     to_insert = False
     while (await retrieve_object(robot, insert=to_insert)):
         to_insert = True
-        await robot.wait(1)
+        await robot.wait(0.2)
     await robot.set_lights_on_rgb(0, 255, 0)
-    # await retrieve_object(robot, insert=False)
-    # await robot.wait(1)
-    # await retrieve_object(robot)
 
 
 
