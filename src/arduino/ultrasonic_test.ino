@@ -16,6 +16,7 @@ void setup() {
 void loop() {
   Serial.print("Distances:");
   for (int i = 0; i < SENSOR_CNT; i++) {
+    // calculate the distance from the sensor
     digitalWrite(trigPins[i], LOW);
     delayMicroseconds(2);
     digitalWrite(trigPins[i], HIGH);

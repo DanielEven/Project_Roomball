@@ -74,6 +74,9 @@ def call_function(function_name):
 
 @app.route(f'/call_custom/{ServerCommands.GET_ULTRASONIC_SENSORS}', methods=['GET'])
 def get_ultrasonic_sensors():
+    """
+    Returns the distances from the ultrasonic sensors.
+    """
     logger.info(f"Calling custom function get_ultrasonic_sensors with arguments []")
     global ser
     if ser is None:
@@ -96,6 +99,12 @@ def get_ultrasonic_sensors():
 
 @app.route(f'/call_custom/{ServerCommands.WAIT_FOR_OBSTACLE}', methods=['GET'])
 def wait_for_obstacle():
+    """
+    Waits until the distance from the ultrasonic sensor is less than the given threshold.
+    If given a second argument, waits until the distance from the specified sensor is less than the threshold.
+    Returns the sensor values and the time taken to detect the obstacle.
+    If more than TIMEOUT seconds pass without detecting an obstacle, returns that a timeout occured.
+    """
     global ser
     args = request.args.get('args', '')
     parsed_args = parse_args(args)
