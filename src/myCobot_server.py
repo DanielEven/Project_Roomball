@@ -72,7 +72,7 @@ def call_function(function_name):
         return jsonify({'error': str(e)}), 400
 
 
-@app.route(f'/call_custom/{ServerCommands.GET_ULTRASONIC_SENSORS}', methods=['GET'])
+@app.route(f'/call/{ServerCommands.GET_ULTRASONIC_SENSORS}', methods=['GET'])
 def get_ultrasonic_sensors():
     """
     Returns the distances from the ultrasonic sensors.
@@ -97,7 +97,7 @@ def get_ultrasonic_sensors():
         return jsonify({'error': 'Failed to open serial port'}), 400
 
 
-@app.route(f'/call_custom/{ServerCommands.WAIT_FOR_OBSTACLE}', methods=['GET'])
+@app.route(f'/call/{ServerCommands.WAIT_FOR_OBSTACLE}', methods=['GET'])
 def wait_for_obstacle():
     """
     Waits until the distance from the ultrasonic sensor is less than the given threshold.
@@ -141,7 +141,7 @@ def wait_for_obstacle():
         return jsonify({'error': 'Failed to open serial port'}), 400
 
 
-@app.route(f'/call_custom/{ServerCommands.CLOSE_SERVER}', methods=['GET'])
+@app.route(f'/call/{ServerCommands.CLOSE_SERVER}', methods=['GET'])
 def close_server():
     """
     Close the flask server and disconnect the myCobot instance.
