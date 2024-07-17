@@ -78,7 +78,7 @@ def lift_side_cup():
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     time.sleep(1.7)
 
-
+# When close to the home pile, finds it and moving towerds it, ending in the same distance.
 async def locate_home(robot):
     await robot.wait(1)
 
@@ -111,12 +111,15 @@ async def locate_home(robot):
     await robot.move(distance - FINAL_DISTANCE)
 
 
+# Find the closet item, and move towards it, using corrections to end at the same distance always.
+# Then recognize if the cup is standing or lying down.
 async def locate_closest_item(robot):
     min_distance = DETECTION_DISTANCE_THRESHOLD
     angle = (await robot.get_position()).heading
     start_angle = angle
     min_angle = angle
 
+    # Find closest item, and turn towards it.
     await robot.set_wheel_speeds(SCAN_ROTATION_SPEED, -SCAN_ROTATION_SPEED)
     while (start_angle - angle) % 360 < 90:
         distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, max(min_distance - 0.5, 0), 1, custom=True)
@@ -131,20 +134,21 @@ async def locate_closest_item(robot):
     
     await robot.set_wheel_speeds(0, 0)
     current_angle = (await robot.get_position()).heading
-    if start_angle == min_angle:
+    if start_angle == min_angle: # If didn't find any item:
         return False
 
-    await robot.turn_left((min_angle - current_angle) % 360)
+    await robot.turn_left((min_angle - current_angle) % 360) # turn to closest item.
 
-    #  Driving to object
+    # Driving to object, until the distance is less then DETECTION_DISTANCE_SPINNING * 2
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
     await robot.move(distances[1] / 2)
     loops = 1
+    # each loop move half the distance from the item, then correct the angle of the irobot, until close enough to the item.
     while distances[1] > DETECTION_DISTANCE_SPINNING * 2:
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)
         detection_distance = (DETECTION_DISTANCE_THRESHOLD / (2 ** loops)) + 5
-        if distances[1] > detection_distance:
-            await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
+        if distances[1] > detection_distance:    # the angle correction
+            await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED) 
             # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
             while call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, detection_distance, 1, custom=True) == "Timeout":
                 pass
@@ -166,19 +170,22 @@ async def locate_closest_item(robot):
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 2, custom=True) # 2 = the sensor to wait for
     await robot.set_wheel_speeds(0, 0)
     # Spin to the left until right sensor can see the item, then stops
+    # Measure the time it took to decide the cup's orientation
     await robot.set_wheel_speeds(-ROTATION_SPEED, ROTATION_SPEED)
     t = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0, custom=True)[1] # 0 = the sensor to wait for
-    print(t)
     await robot.set_wheel_speeds(0, 0)
     distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS, custom=True)[0]
+    # move to be at constant distance, and now the pick_up_cup functions can be called.
     if t < 1.4:
-        await robot.move(distance - FINAL_DISTANCE + 4)
+        await robot.move(distance - 1)
         return "side"
     else:
         await robot.move(distance - FINAL_DISTANCE)
         return "lift"
 
 
+# The function locates the colset item, picks it up, return to home, and insert the cup to the pile.
+# If the insert==false, it will put down the cup without searching for a pile. Importent for the first cup. 
 async def retrieve_object(robot, insert=True):
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
@@ -206,14 +213,18 @@ async def retrieve_object(robot, insert=True):
 async def test(robot):
     await locate_closest_item(robot)
 
+# The main loop, retriveing cups and putting them in a pile.
 @event(robot.when_touched, [False, True])
 async def get_items(robot):
     await robot.reset_navigation()
     to_insert = False
+    items = 0
     while (await retrieve_object(robot, insert=to_insert)):
-        to_insert = True
+        items += 1
+        to_insert = True            #After putting down the first cup, the rest will be put inside the pile.
         await robot.wait(0.2)
     await robot.set_lights_on_rgb(0, 255, 0)
+    print(f"Picked up {items} cups")
 
 
 
@@ -222,5 +233,8 @@ if __name__ == "__main__":
     parser.add_argument('--host', type=str, help='host ip', default=COBOT_IP)
     parser.add_argument('--port', type=int, help='port number', default=COBOT_PORT)
     args = parser.parse_args()
+    
+    COBOT_IP = args.host
+    COBOT_PORT = args.port
 
     robot.play()
