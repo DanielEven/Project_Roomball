@@ -22,11 +22,11 @@ FINAL_DISTANCE = 5
 FOLDED_POSITION = [5, -90, 100, -90, 0, -45]
 MIDDLE_POSITION = [5, -70, -10, 0, 0, -45]
 LIFT_POSITION = [5, -90, 0, 7, 0, -45]
-INSERT_POSITION = [5, -90, 50, -35, 0, -45]
-INSERT_MIDDLE_POSITION = [5, -60, 30, -45, 0, -45]
-SIDE_MIDDLE_POSITION_1 = [-50, -80, 20, -5, 90, -90]
-SIDE_MIDDLE_POSITION_2 = [-50, -130, 20, 0, 90, -110]
-SIDE_GRAB_POSITION = [-35, -130, 20, 0, 90, -110]
+INSERT_POSITION = [2, -90, 50, -35, 0, -45]
+INSERT_MIDDLE_POSITION = [2, -60, 30, -45, 0, -45]
+SIDE_MIDDLE_POSITION_1 = [130, -80, 20, -5, 90, -90]
+SIDE_MIDDLE_POSITION_2 = [130, -130, 20, -15, 90, -90]
+SIDE_GRAB_POSITION = [155, -130, 20, -15, 90, -90]
 
 #Initalize irobot, needs to be before all functions including robot
 robot = Create3(Bluetooth())
@@ -65,35 +65,34 @@ def insert_cup():
 
 def lift_side_cup():
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_1, 50)
-    time.sleep(1.7)
+    time.sleep(2)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_2, 50)
-    time.sleep(0.7)
-    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_GRAB_POSITION, 50)
-    time.sleep(0.6)
-    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 0, 50)
     time.sleep(1)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_GRAB_POSITION, 50)
+    time.sleep(0.9)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 0, 50)
+    time.sleep(1.3)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_2, 50)
-    time.sleep(0.6)
+    time.sleep(0.9)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_1, 50)
-    time.sleep(0.7)
+    time.sleep(1)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
-    time.sleep(1.7)
+    time.sleep(2)
 
 # When close to the home pile, finds it and moving towerds it, ending in the same distance.
 async def locate_home(robot):
     await robot.wait(1)
 
     # Spinning until the robot detects an obstacle
-    for i in range(2):
+    distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
+    if distances[1] > HOME_DISTANCE_THRESHOLD:
+        await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
+        # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
+        while call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, HOME_DISTANCE_THRESHOLD , 1) == "Timeout":
+            pass
+        await robot.set_wheel_speeds(0, 0)
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
-        if distances[1] > HOME_DISTANCE_THRESHOLD:
-            await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
-            # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
-            while call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, HOME_DISTANCE_THRESHOLD , 1) == "Timeout":
-                pass
-            await robot.set_wheel_speeds(0, 0)
-            distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
-        await robot.move(distances[1] / 2)
+    await robot.move(distances[1] / 2)
     
     # Spin to the right until middle sensor detects the object.
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
@@ -142,6 +141,8 @@ async def locate_closest_item(robot):
 
     # Driving to object, until the distance is less then DETECTION_DISTANCE_SPINNING * 2
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
+    if distances[1] > DETECTION_DISTANCE_THRESHOLD:    # the angle correction
+        await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
     await robot.move(distances[1] / 2)
     loops = 1
     # each loop move half the distance from the item, then correct the angle of the irobot, until close enough to the item.
@@ -149,7 +150,7 @@ async def locate_closest_item(robot):
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
         detection_distance = (DETECTION_DISTANCE_THRESHOLD / (2 ** loops)) + 5
         if distances[1] > detection_distance:    # the angle correction
-            await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED) 
+            await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
             # Blocking until an object within DETECTION_DISTANCE_THRESHOLD was found, 1 = the middle sensor
             while call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, detection_distance, 1) == "Timeout":
                 pass
@@ -174,12 +175,14 @@ async def locate_closest_item(robot):
     # Measure the time it took to decide the cup's orientation
     await robot.set_wheel_speeds(-ROTATION_SPEED, ROTATION_SPEED)
     t = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0)[1] # 0 = the sensor to wait for
-    print(t)
     await robot.set_wheel_speeds(0, 0)
     distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)[0]
     # move to be at constant distance, and now the pick_up_cup functions can be called.
-    if t < 1.4:
-        await robot.move(distance - 1)
+    if t < 1.35:
+        await robot.turn_right(180)
+        await robot.move(-distance)
+        # exit()
+        # await robot.move(distance - 2)
         return "side"
     else:
         await robot.move(distance - FINAL_DISTANCE)
@@ -201,11 +204,11 @@ async def retrieve_object(robot, insert=True):
         lift_side_cup()
     if insert:
         # calibrate with respect to the cup
-        await robot.navigate_to(5, 5, ROTATION_DEGREES // 2 + 285)
+        await robot.navigate_to(5, 5, -ROTATION_DEGREES // 2 + 285)
         await locate_home(robot)
         insert_cup()
     else:
-        await robot.navigate_to(0, 0, (ROTATION_DEGREES // 2 + 270) % 360)
+        await robot.navigate_to(0, 0, (-ROTATION_DEGREES // 2 + 270) % 360)
         drop_cup()
     await robot.turn_right(((await robot.get_position()).heading - 90) % 360)
     return True
