@@ -4,7 +4,6 @@ import time
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, Create3
 
-
 from myCobot_client import call_cobot_function
 from server_commands import ServerCommands
 
@@ -234,9 +233,9 @@ async def get_items(robot):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='mycobot server')
-    parser.add_argument('--host', type=str, help='host ip', default=COBOT_IP)
-    parser.add_argument('--port', type=int, help='port number', default=COBOT_PORT)
+    parser = argparse.ArgumentParser(description='Roomball Functionality')
+    parser.add_argument('--host', type=str, help='myCobot server ip', default=COBOT_IP)
+    parser.add_argument('--port', type=int, help='myCobot port number', default=COBOT_PORT)
     args = parser.parse_args()
     
     COBOT_IP = args.host
