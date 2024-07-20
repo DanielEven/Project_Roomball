@@ -152,15 +152,15 @@ async def locate_closest_item(robot):
     if start_angle == min_angle: # If didn't find any item:
         return False
 
-    await robot.turn_left((min_angle - current_angle) % 360) # turn to closest item.
+    await robot.turn_left((min_angle - current_angle) % 360) # Turn to closest item.
 
     # Driving to object, until the distance is less then DETECTION_DISTANCE_SPINNING * 2
     distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
-    if distances[1] > DETECTION_DISTANCE_THRESHOLD:    # the angle correction
+    if distances[1] > DETECTION_DISTANCE_THRESHOLD:    # The angle correction
         await robot.set_wheel_speeds(ROTATION_SPEED, -ROTATION_SPEED)
     await robot.move(distances[1] / 2)
     loops = 1
-    # each loop move half the distance from the item, then correct the angle of the irobot, until close enough to the item.
+    # Each loop move half the distance from the item, then correct the angle of the irobot, until close enough to the item.
     while distances[1] > DETECTION_DISTANCE_SPINNING * 2:
         distances = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)
         detection_distance = (DETECTION_DISTANCE_THRESHOLD / (2 ** loops)) + 5
@@ -192,12 +192,10 @@ async def locate_closest_item(robot):
     t = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.WAIT_FOR_OBSTACLE, DETECTION_DISTANCE_SPINNING, 0)[1] # 0 = the sensor to wait for
     await robot.set_wheel_speeds(0, 0)
     distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)[0]
-    # move to be at constant distance, and now the pick_up_cup functions can be called.
+    # Move to be at constant distance, and now the pick_up_cup functions can be called.
     if t < 1.35:
         await robot.turn_right(180)
         await robot.move(-distance)
-        # exit()
-        # await robot.move(distance - 2)
         return "side"
     else:
         await robot.move(distance - FINAL_DISTANCE)
@@ -232,15 +230,6 @@ async def retrieve_object(robot, insert=True):
         drop_cup()
     await robot.turn_right(((await robot.get_position()).heading - 90) % 360)
     return True
-
-@event(robot.when_touched, [True, False])
-async def test(robot):
-    """
-    Test function to locate the closest item when the robot is touched.
-
-    robot: The iRobot Create3 instance
-    """
-    await locate_closest_item(robot)
 
 @event(robot.when_touched, [False, True])
 async def get_items(robot):

@@ -35,16 +35,16 @@ The project makes use of the mycobot robotic arm & the iRobot Create🤖.
     ```
     Replace `<MYCOBOT_SERVER_IP>` and `<MYCOBOT_PORT_NUMBER>` with the IP address and port number of your myCobot device.
     > ❗ **Note:** The computer running the program must be connected to the same network as the myCobot device.
-
-2. The program will start running and the iRobot Create will start looking for the objects.
+2. Press the 2 dots button on the iRobot Create - this event will trigger the code to start running.
+3. The iRobot Create will start looking for objects.
 
 ## myCobot Server User Manual
 ### Requirements
 - [myCobot 280](https://www.elephantrobotics.com/en/mycobot-280-pi-2023-en/) robotic arm (by Elephant Robotics).💪
 - [Python](https://www.python.org/) 3.9 or later, installed on the myCobot's Raspberry Pi.🐍
-- Installing the [pymycobot](https://pypi.org/project/pymycobot/) package on the Raspberry Pi:💻
+- Installing the [pymycobot](https://pypi.org/project/pymycobot/), [pyserial](https://pypi.org/project/pyserial/), [Flask](https://pypi.org/project/Flask/) packages on the Raspberry Pi:💻
     ```bash
-    pip install pymycobot
+    pip install pymycobot pyserial Flask
     ```
 
 ### Usage

@@ -103,7 +103,7 @@ def wait_for_obstacle():
     Waits until the distance from the ultrasonic sensor is less than the given threshold.
     If given a second argument, waits until the distance from the specified sensor is less than the threshold.
     Returns the sensor values and the time taken to detect the obstacle.
-    If more than TIMEOUT seconds pass without detecting an obstacle, returns that a timeout occured.
+    If more than TIMEOUT seconds pass without detecting an obstacle, returns that a timeout occurred.
     """
     global ser
     args = request.args.get('args', '')
