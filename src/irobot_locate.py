@@ -1,15 +1,13 @@
 import argparse
 import time
-
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import event, Create3
-
 from myCobot_client import call_cobot_function
 from server_commands import ServerCommands
 
+# Constants for the cobot configuration and operation
 COBOT_IP = "192.168.0.134"
 COBOT_PORT = 12355
-
 DETECTION_DISTANCE_THRESHOLD = 60
 HOME_DISTANCE_THRESHOLD = 20
 ROTATION_DEGREES = 90
@@ -18,6 +16,7 @@ SCAN_ROTATION_SPEED = 5
 DETECTION_DISTANCE_SPINNING = 10
 FINAL_DISTANCE = 5
 
+# Arm positions for different actions
 FOLDED_POSITION = [5, -90, 100, -90, 0, -45]
 MIDDLE_POSITION = [5, -70, -10, 0, 0, -45]
 LIFT_POSITION = [5, -90, 0, 7, 0, -45]
@@ -27,10 +26,14 @@ SIDE_MIDDLE_POSITION_1 = [130, -80, 20, -5, 90, -90]
 SIDE_MIDDLE_POSITION_2 = [130, -130, 20, -15, 90, -90]
 SIDE_GRAB_POSITION = [155, -130, 20, -15, 90, -90]
 
-#Initalize irobot, needs to be before all functions including robot
+# Initialize iRobot Create3 robot with Bluetooth
+# Has to appear before the other functions.
 robot = Create3(Bluetooth())
 
 def lift_cup():
+    """
+    Lift the cup using the cobot arm.
+    """
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, MIDDLE_POSITION, 50)
     time.sleep(1.7)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, LIFT_POSITION, 50)
@@ -41,6 +44,9 @@ def lift_cup():
     time.sleep(1.5)
 
 def drop_cup():
+    """
+    Drop the cup using the cobot arm.
+    """
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, MIDDLE_POSITION, 50)
     time.sleep(1.7)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, LIFT_POSITION, 50)
@@ -50,19 +56,24 @@ def drop_cup():
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     time.sleep(1.5)
 
-
 def insert_cup():
+    """
+    Insert the cup into the pile using the cobot arm.
+    """
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, INSERT_MIDDLE_POSITION, 50)
-    time.sleep(1.7)
+    time.sleep(0.5)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, INSERT_POSITION, 50)
     time.sleep(0.5)
-    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
+    call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 0, 50)
     time.sleep(1)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     time.sleep(1.5)
 
 
 def lift_side_cup():
+    """
+    Lift a side cup using the cobot arm.
+    """
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_1, 50)
     time.sleep(2)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, SIDE_MIDDLE_POSITION_2, 50)
@@ -78,7 +89,7 @@ def lift_side_cup():
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     time.sleep(2)
 
-# When close to the home pile, finds it and moving towerds it, ending in the same distance.
+# When close to the home pile, finds it and moving towards it, ending in the same distance.
 async def locate_home(robot):
     await robot.wait(1)
 
@@ -108,11 +119,16 @@ async def locate_home(robot):
 
     distance = call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.GET_ULTRASONIC_SENSORS)[0]
     await robot.move(distance - FINAL_DISTANCE)
-
-
-# Find the closet item, and move towards it, using corrections to end at the same distance always.
-# Then recognize if the cup is standing or lying down.
 async def locate_closest_item(robot):
+    """
+    Locate the closest item using the robot's sensors, and move towards it.
+    This will be with corrections in front of the item - to end in a constant distance from it.
+    THe function will also recognize the orientation of the cup.
+    
+    robot: The iRobot Create3 instance
+    return: Cup orientation: "lift" for the cup's handle, "side" for the cup's side.
+    If no item was found, return False.
+    """
     min_distance = DETECTION_DISTANCE_THRESHOLD
     angle = (await robot.get_position()).heading
     start_angle = angle
@@ -187,10 +203,15 @@ async def locate_closest_item(robot):
         await robot.move(distance - FINAL_DISTANCE)
         return "lift"
 
-
-# The function locates the colset item, picks it up, return to home, and insert the cup to the pile.
-# If the insert==false, it will put down the cup without searching for a pile. Importent for the first cup. 
 async def retrieve_object(robot, insert=True):
+    """
+    Locating the closest item, lifting it, and returning to the home with it.
+    Putting down the item: inside the pile if insert is True, otherwise on the ground.
+
+    robot: The iRobot Create3 instance
+    insert: Boolean flag to insert the object into a pile
+    return: True if an object was retrieved, False otherwise
+    """
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SEND_ANGLES, FOLDED_POSITION, 50)
     call_cobot_function(COBOT_IP, COBOT_PORT, ServerCommands.SET_GRIPPER_VALUE, 100, 50)
     await robot.wait(1)
@@ -202,7 +223,7 @@ async def retrieve_object(robot, insert=True):
     else:
         lift_side_cup()
     if insert:
-        # calibrate with respect to the cup
+        # Calibrate with respect to the cup
         await robot.navigate_to(5, 5, -ROTATION_DEGREES // 2 + 285)
         await locate_home(robot)
         insert_cup()
@@ -212,29 +233,35 @@ async def retrieve_object(robot, insert=True):
     await robot.turn_right(((await robot.get_position()).heading - 90) % 360)
     return True
 
-
 @event(robot.when_touched, [True, False])
 async def test(robot):
+    """
+    Test function to locate the closest item when the robot is touched.
+
+    robot: The iRobot Create3 instance
+    """
     await locate_closest_item(robot)
 
-# The main loop, retriveing cups and putting them in a pile.
 @event(robot.when_touched, [False, True])
 async def get_items(robot):
+    """
+    Main loop to retrieve items and place them in a pile.
+
+    robot: The iRobot Create3 instance
+    """
     await robot.reset_navigation()
     to_insert = False
     items = 0
-    while (await retrieve_object(robot, insert=to_insert)):
+    while await retrieve_object(robot, insert=to_insert):
         items += 1
-        to_insert = True            # After putting down the first cup, the rest will be put inside the pile.
+        to_insert = True # After putting down the first cup, the rest will be put inside the pile.
         await robot.wait(0.2)
     await robot.set_lights_on_rgb(0, 255, 0)
     print(f"Picked up {items} cups")
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Roomball Functionality')
-    parser.add_argument('--host', type=str, help='myCobot server ip', default=COBOT_IP)
+    parser.add_argument('--host', type=str, help='myCobot server IP', default=COBOT_IP)
     parser.add_argument('--port', type=int, help='myCobot port number', default=COBOT_PORT)
     args = parser.parse_args()
     
@@ -242,3 +269,4 @@ if __name__ == "__main__":
     COBOT_PORT = args.port
 
     robot.play()
+    
