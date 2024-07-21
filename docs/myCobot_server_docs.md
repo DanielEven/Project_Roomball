@@ -1,17 +1,51 @@
 # myCobot Server Programmer Manual
 
-The server runs on http using the flask library.\
-The server gets the function name, and checks if there exists a function with the same name in the `MyCobot` library. If there is, it parses the arguments, and passes them to the function. If the function is a custom function that isn't in the `MyCobot` library, it will run instead.
+## Overview
+
+The myCobot server runs on HTTP using the Flask library. It receives function names, checks if corresponding functions exist in the `MyCobot` library, parses arguments, and passes them to the functions. If the function is custom and not part of the `MyCobot` library, the custom function is executed instead.
 
 ## Adding Custom Commands
-Adding custom commands which don't come with the myCobot library can be useful in cases where fast calculations need to be made as the internet speed might limit them.\
-In order to add them, a new function must be created in the `myCobot_server.py` file. The function must be wrapped with the wrapper `@app.route`. The url should be of the form `/call/{function_name}`. The arguments should be received using `request.args.get('args', '')`.\
-For examples, look at the functions `get_ultrasonic_sensors`, `wait_for_obstacle`, and `close_server`.\
-It is recommended to add the names of the functions that you use and the custom functions that you create to the `ServerCommands` class in `server_commands.py`, as it will help you make sure that you don't get errors caused by calling the wrong url.\
-The server and client currently support parameters that are one of the following types: `int`, `float`, `tuple[int]`, `tuple[float]` (if the client receives a `list` then it will send it as a tuple), and `str`. If you need more input types, update the `parse_arg` function in `myCobot_server.py` to unparse the wanted type correctly and update the `call_cobot_function` function in `myCobot_server.py` to parse the wanted type correctly.
+
+Adding custom commands that are not included in the myCobot library can be useful, especially for performing fast calculations without relying on internet speed. To add custom commands, follow these steps:
+
+1. **Create a New Function**: Define a new function in the `myCobot_server.py` file. Wrap the function with the `@app.route` decorator. The URL should be in the form `/call/{function_name}`.
+    ```python
+    @app.route('/call/custom_function_name')
+    def custom_function_name():
+        args = request.args.get('args', '')
+        # Function implementation
+        pass
+    ```
+
+2. **Receive Arguments**: Use `request.args.get('args', '')` to receive arguments for your function.
+
+3. **Refer to Examples**: Look at existing functions such as `get_ultrasonic_sensors`, `wait_for_obstacle`, and `close_server` for examples.
+
+4. **Update `ServerCommands` Class**: Add the names of your functions to the `ServerCommands` class in `server_commands.py`. This helps ensure that you do not encounter errors caused by incorrect URLs.
+    ```python
+    class ServerCommands:
+        ...
+        CUSTOM_FUNCTION_NAME = 'custom_function_name'
+        ...
+    ```
+
+5. **Support Additional Parameter Types**: The server and client currently support `int`, `float`, `tuple[int]`, `tuple[float]`, and `str` parameter types. To add more types, update the `parse_arg` function in `myCobot_server.py` to correctly unparse the desired type and the `call_cobot_function` in `myCobot_client.py` function to parse it.
 
 ## Interfacing with the Arduino
-In order to get information from the Arduino, we use the `serial` library.\
-To connect more sensors, update the `SENSOR_CNT`, `trigPins` and `echoPins` variables in the Arduino program.\
-If you want to use more types of sensors, write an Arduino program that prints their values to Serial, and in the server read those values and use them as wanted.\
-If you want to pass information from the server to the arduino, this is probably possible by writing to the serial port from the server and reading it in the Arduino code, but we haven't tested this.
+
+To interface with the Arduino and retrieve sensor information, the `serial` library is used.
+
+### Connecting More Sensors
+
+1. **Update Arduino Program** at `arduino/ultrasonic_test.ino`: Modify the `SENSOR_CNT`, `trigPins`, and `echoPins` variables in the Arduino program to connect more sensors.
+    ```cpp
+    const int SENSOR_CNT = new_value;
+    const int trigPins[SENSOR_CNT] = {trig_pin_values};
+    const int echoPins[SENSOR_CNT] = {echo_pin_values};
+    ```
+
+2. **Add New Sensor Types**: Write an Arduino program that prints sensor values to the Serial monitor. In the server, read these values and use them as needed.
+
+### Passing Information to the Arduino
+
+To pass information from the server to the Arduino, write to the serial port from the server and read it in the Arduino code. Although this has not been tested, it is likely possible.
